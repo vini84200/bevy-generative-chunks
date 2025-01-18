@@ -318,6 +318,7 @@ dependencies = [
  "daggy",
  "downcast-rs 2.0.1",
  "log",
+ "rand",
  "serde",
  "tracing",
 ]
