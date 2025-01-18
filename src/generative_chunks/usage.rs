@@ -1,9 +1,11 @@
-pub enum Usage {
+#[derive(Debug)]
+pub enum UsageStrategy {
     KeepAlive,
     Slow,
     Fast,
 }
 
+#[derive(Debug)]
 pub struct UsageCounter {
     keep_alive: u32,
     slow: u32,
@@ -19,29 +21,29 @@ impl UsageCounter {
         }
     }
 
-    pub fn increment(&mut self, usage: Usage) {
+    pub fn increment(&mut self, usage: UsageStrategy) {
         match usage {
-            Usage::KeepAlive => self.keep_alive += 1,
-            Usage::Slow => self.slow += 1,
-            Usage::Fast => self.fast += 1,
+            UsageStrategy::KeepAlive => self.keep_alive += 1,
+            UsageStrategy::Slow => self.slow += 1,
+            UsageStrategy::Fast => self.fast += 1,
         }
     }
 
-    pub fn decrement(&mut self, usage: Usage) {
+    pub fn decrement(&mut self, usage: UsageStrategy) {
         match usage {
-            Usage::KeepAlive => self.keep_alive -= 1,
-            Usage::Slow => self.slow -= 1,
-            Usage::Fast => self.fast -= 1,
+            UsageStrategy::KeepAlive => self.keep_alive -= 1,
+            UsageStrategy::Slow => self.slow -= 1,
+            UsageStrategy::Fast => self.fast -= 1,
         }
     }
 
-    pub fn best_usage(&self) -> Option<Usage> {
+    pub fn best_usage(&self) -> Option<UsageStrategy> {
         if self.fast > 0 {
-            Some(Usage::Fast)
+            Some(UsageStrategy::Fast)
         } else if self.slow > 0 {
-            Some(Usage::Slow)
+            Some(UsageStrategy::Slow)
         } else if self.keep_alive > 0 {
-            Some(Usage::KeepAlive)
+            Some(UsageStrategy::KeepAlive)
         } else {
             None
         }
