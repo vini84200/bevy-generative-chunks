@@ -88,12 +88,12 @@ impl ChunkIdx {
     // pub(crate) fn to_point(&self, chunk_width: f32, chunk_height: f32) -> Point {
     //     (self.x as f32 * chunk_width, self.y as f32 * chunk_height)
     // }
-    pub(crate) fn to_point(&self, chunk_size: (f32, f32)) -> Point {
-        Vec2::new(self.x as f32 * chunk_size.0, self.y as f32 * chunk_size.1)
+    pub(crate) fn to_point(&self, chunk_size: Point) -> Point {
+        Vec2::new(self.x as f32 * chunk_size.x, self.y as f32 * chunk_size.y)
     }
 
-    pub fn center(&self, chunk_size: (f32, f32)) -> Point {
-        Vec2::new(self.x as f32 * chunk_size.0 + chunk_size.0 / 2.0, self.y as f32 * chunk_size.1 + chunk_size.1 / 2.0)
+    pub fn center(&self, chunk_size: Point) -> Point {
+        Vec2::new(self.x as f32 * chunk_size.x + chunk_size.x / 2.0, self.y as f32 * chunk_size.y + chunk_size.y / 2.0)
     }
 }
 

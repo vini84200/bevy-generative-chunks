@@ -9,8 +9,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-mod usage;
-pub(crate) mod bounds;
+pub mod usage;
+pub mod bounds;
 
 
 pub struct LayersManagerBuilder {
@@ -41,7 +41,7 @@ impl IntoLayerClient for LayerClient {
 }
 
 impl LayerClient {
-    fn new(center: Point, dependencies: Vec<Dependency>, strength: UsageStrategy) -> Self {
+    pub(crate) fn new(center: Point, dependencies: Vec<Dependency>, strength: UsageStrategy) -> Self {
         LayerClient {
             active: true,
             center,
@@ -89,7 +89,7 @@ impl LayersManager {
         data.and_then(|c| Some(c.clone()))
     }
 
-    pub fn get_chunks_in<L: Layer + 'static>(&self, bounds: Bounds) -> Vec<L::Chunk>
+    pub fn get_chunks_in<L: Layer + 'static>(&self, bounds: Bounds) -> Vec<(ChunkIdx, L::Chunk)>
     where
         L::Chunk: Clone,
     {
@@ -101,8 +101,24 @@ impl LayersManager {
             if let Some(chunk) = chunk {
                 let data = chunk.chunk.as_ref().and_then(|c| c.downcast_ref::<L::Chunk>());
                 if let Some(data) = data {
-                    chunks.push(data.clone());
+                    chunks.push((chunk_idx.clone(), data.clone()));
                 }
+            }
+        }
+        chunks
+    }
+
+    pub fn get_all_chunks_in<L: Layer + 'static>(&self) -> Vec<(ChunkIdx, L::Chunk)>
+    where
+        L::Chunk: Clone,
+    {
+        let layer_id = LayerId::from_type::<L>();
+        let layer = self.layers.get(&layer_id).unwrap().borrow();
+        let mut chunks = Vec::new();
+        for (chunk_idx, chunk) in layer.storage.iter() {
+            let data = chunk.chunk.as_ref().and_then(|c| c.downcast_ref::<L::Chunk>());
+            if let Some(data) = data {
+                chunks.push((chunk_idx.clone(), data.clone()));
             }
         }
         chunks
@@ -168,7 +184,7 @@ impl LayersManager {
         ));
     }
 
-    fn regenerate(&mut self) {
+    pub fn regenerate(&mut self) {
         // Check what the layer clients need to be regenerated
         for layer_client in self.layer_client.iter_mut() {
             if !layer_client.is_active() {
