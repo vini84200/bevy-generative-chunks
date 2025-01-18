@@ -18,7 +18,6 @@ impl Bounds {
 }
 
 impl Bounds {
-
     pub fn add_padding(&self, padding: Vec2) -> Bounds {
         Bounds::new(
             Vec2::new(self.min.x - padding.x, self.min.y - padding.y),
@@ -63,14 +62,14 @@ impl Bounds {
         )
     }
 
-    pub fn chunks(&self, chunk_size: Point) -> impl Iterator<Item = ChunkIdx> {
+    pub fn chunks(&self, chunk_size: Point) -> impl Iterator<Item=ChunkIdx> {
         let min_chunk = (
             (self.min.x / chunk_size.x).floor() as i32,
-            (self.min.x / chunk_size.y).floor() as i32,
+            (self.min.y / chunk_size.y).floor() as i32,
         );
         let max_chunk = (
             (self.max.x / chunk_size.x).ceil() as i32,
-            (self.max.x / chunk_size.y).ceil() as i32,
+            (self.max.y / chunk_size.y).ceil() as i32,
         );
 
         (min_chunk.0..=max_chunk.0)
@@ -89,11 +88,12 @@ impl ChunkIdx {
     //     (self.x as f32 * chunk_width, self.y as f32 * chunk_height)
     // }
     pub(crate) fn to_point(&self, chunk_size: Point) -> Point {
-        Vec2::new(self.x as f32 * chunk_size.x, self.y as f32 * chunk_size.y)
+        Vec2::new(self.x as f32 * chunk_size.x,
+                  self.y as f32 * chunk_size.y)
     }
 
     pub fn center(&self, chunk_size: Point) -> Point {
-        Vec2::new(self.x as f32 * chunk_size.x + chunk_size.x / 2.0, self.y as f32 * chunk_size.y + chunk_size.y / 2.0)
+        self.to_point(chunk_size) + chunk_size / 2.0
     }
 }
 
@@ -107,7 +107,7 @@ impl ChunkIdx {
 }
 
 impl ChunkIdx {
-    pub(crate) fn  to_bounds(&self, width: f32, height: f32) -> Bounds {
+    pub(crate) fn to_bounds(&self, width: f32, height: f32) -> Bounds {
         Bounds::new(
             Vec2::new(self.x as f32 * width, self.y as f32 * height),
             Vec2::new((self.x + 1) as f32 * width, (self.y + 1) as f32 * height),
