@@ -1,5 +1,5 @@
 use crate::generative_chunks::bounds::Point;
-use crate::generative_chunks::{Dependency, IntoLayerClient};
+use crate::generative_chunks::layer::Dependency;
 use crate::generative_chunks::usage::UsageStrategy;
 
 #[derive(Debug)]
@@ -44,4 +44,8 @@ impl LayerClient {
     pub fn get_dependencies(&self) -> &Vec<Dependency> {
         &self.dependencies
     }
+}
+
+pub trait IntoLayerClient {
+    fn into_layer_client(self) -> LayerClient;
 }

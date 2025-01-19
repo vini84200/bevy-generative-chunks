@@ -6,9 +6,10 @@ use bevy::ecs::entity::Entities;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use generative_chunks::bounds::{Bounds, ChunkIdx};
-use generative_chunks::{Chunk, Dependency, Layer, LayerLookupChunk, LayersManager, LayersManagerBuilder};
 use rand::{Rng, SeedableRng};
+use generative_chunks::layer::{Chunk, Dependency, Layer};
 use generative_chunks::layer_client::LayerClient;
+use generative_chunks::layer_manager::{LayerLookupChunk, LayersManager, LayersManagerBuilder};
 
 /// For this test we will have a layer that depends on another layer
 /// The points layer will have a chunk size of 5x5 and will generate a single random point
