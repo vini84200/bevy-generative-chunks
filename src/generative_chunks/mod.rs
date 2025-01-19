@@ -8,10 +8,11 @@ use downcast_rs::{impl_downcast, Downcast};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use layer_client::LayerClient;
 
 pub mod usage;
 pub mod bounds;
-
+pub mod layer_client;
 
 pub struct LayersManagerBuilder {
     layers: Vec<LayerConfig>,
@@ -23,42 +24,6 @@ struct LayerId(&'static str);
 impl LayerId {
     fn from_type<T: Layer + 'static>() -> LayerId {
         LayerId(std::any::type_name::<T>())
-    }
-}
-
-#[derive(Debug)]
-pub struct LayerClient {
-    active: bool,
-    center: Point,
-    dependencies: Vec<Dependency>,
-    strategy: UsageStrategy,
-}
-
-impl IntoLayerClient for LayerClient {
-    fn into_layer_client(self) -> LayerClient {
-        self
-    }
-}
-
-impl LayerClient {
-    pub(crate) fn new(center: Point, dependencies: Vec<Dependency>, strength: UsageStrategy) -> Self {
-        LayerClient {
-            active: true,
-            center,
-            dependencies,
-            strategy: strength,
-        }
-    }
-
-    fn activate(&mut self) {
-        self.active = true;
-    }
-    fn deactivate(&mut self) {
-        self.active = false;
-    }
-
-    fn is_active(&self) -> bool {
-        self.active
     }
 }
 
@@ -193,9 +158,9 @@ impl LayersManager {
             for Dependency {
                 padding,
                 layer_id
-            } in layer_client.dependencies.iter() {
+            } in layer_client.get_dependencies().iter() {
                 let mut layer = self.layers.get_mut(layer_id).unwrap().borrow_mut();
-                layer.ensure_generated(&Bounds::from_point(layer_client.center).add_padding(*padding));
+                layer.ensure_generated(&Bounds::from_point(layer_client.get_center()).add_padding(*padding));
             }
         }
 
