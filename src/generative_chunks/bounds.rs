@@ -77,7 +77,7 @@ impl Bounds {
     }
 }
 
-#[derive(Debug, Deserialize, Hash, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub struct ChunkIdx {
     pub x: i32,
     pub y: i32,

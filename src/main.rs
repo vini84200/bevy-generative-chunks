@@ -23,10 +23,11 @@ struct PointChunk {
     color: (u8, u8, u8),
 }
 
+const POINT_CHUNK_SIZE: Vec2 = Vec2::new(5., 5.);
 struct PointsLayer;
 impl Chunk for PointChunk {
     fn get_size() -> Vec2 {
-        Vec2::new(5., 5.)
+        POINT_CHUNK_SIZE
     }
 }
 
@@ -35,13 +36,13 @@ impl Layer for PointsLayer {
 
     fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
         // Get thread random with the chunk_idx as seed
-        let seed = chunk_idx.x + chunk_idx.y * 23;
+        let seed = chunk_idx.x + chunk_idx.y * 512;
         let mut random = rand::prelude::SmallRng::seed_from_u64(seed as u64);
         info!("Generating points chunk with idx: {:?}", chunk_idx);
 
         PointChunk {
-            point: Vec2::new(random.gen_range(0.0..5.0) + chunk_idx.x as f32 * 5.0,
-                             random.gen_range(0.0..5.0) + chunk_idx.y as f32 * 5.0),
+            point: Vec2::new(random.gen_range(0.0..POINT_CHUNK_SIZE.x) + chunk_idx.x as f32 * POINT_CHUNK_SIZE.x,
+                             random.gen_range(0.0..POINT_CHUNK_SIZE.y) + chunk_idx.y as f32 * POINT_CHUNK_SIZE.y),
             color: (random.gen_range(0..255), random.gen_range(0..255), random.gen_range(0..255)),
         }
     }
@@ -67,7 +68,7 @@ impl Layer for VoronoiLayer {
     fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
         // Get the closest point from the points layer
         let bounds = Bounds::from_point(chunk_idx.to_point(Self::Chunk::get_size()))
-            .expand(20.0, 20.0);
+            .expand(POINT_CHUNK_SIZE.x * 4.0, POINT_CHUNK_SIZE.y * 4.0);
         let points = lookup.get_chunks_in::<PointsLayer>(bounds);
         let closest_point = points.iter().min_by(|a, b| {
             let a_dist = a.point.distance(chunk_idx.center(Self::Chunk::get_size()));
@@ -96,7 +97,7 @@ fn main() {
     App::new().add_plugins(DefaultPlugins)
         .insert_resource(ChunkIndex { index: HashMap::new() })
         .add_systems(Startup, (setup, setup_layers_manager))
-        .add_systems(Update, (regenerate,draw).chain())
+        .add_systems(Update, (regenerate, draw).chain())
         .run();
 }
 
