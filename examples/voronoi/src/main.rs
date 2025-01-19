@@ -1,14 +1,15 @@
-pub mod generative_chunks;
-
-use crate::generative_chunks::bounds::Point;
-use crate::generative_chunks::usage::UsageStrategy;
+use bevy::math::NormedVectorSpace;
+use bevy_generative_chunks::generative_chunks::bounds::Point;
+use bevy_generative_chunks::generative_chunks::usage::UsageStrategy;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
-use generative_chunks::bounds::{Bounds, ChunkIdx};
-use generative_chunks::layer::{Chunk, Dependency, Layer};
-use generative_chunks::layer_client::LayerClient;
-use generative_chunks::layer_manager::{LayerLookupChunk, LayersManager, LayersManagerBuilder};
+use bevy_pancam::{PanCam, PanCamPlugin};
+use bevy_generative_chunks::generative_chunks::bounds::{Bounds, ChunkIdx};
+use bevy_generative_chunks::generative_chunks::layer::{Chunk, Dependency, Layer};
+use bevy_generative_chunks::generative_chunks::layer_client::LayerClient;
+use bevy_generative_chunks::generative_chunks::layer_manager::{LayerLookupChunk, LayersManager, LayersManagerBuilder};
 use rand::{Rng, SeedableRng};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 /// For this test we will have a layer that depends on another layer
 /// The points layer will have a chunk size of 5x5 and will generate a single random point
@@ -22,9 +23,10 @@ struct PointChunk {
     /// The point is in real coordinates
     point: Point,
     color: (u8, u8, u8),
+    strength: f32
 }
 
-const POINT_CHUNK_SIZE: Vec2 = Vec2::new(5., 5.);
+const POINT_CHUNK_SIZE: Vec2 = Vec2::new(15., 15.);
 struct PointsLayer;
 impl Chunk for PointChunk {
     fn get_size() -> Vec2 {
@@ -51,6 +53,7 @@ impl Layer for PointsLayer {
                 random.gen_range(0..255),
                 random.gen_range(0..255),
             ),
+            strength: random.gen_range(0.2..1.0),
         }
     }
 }
@@ -67,6 +70,14 @@ impl Chunk for VoronoiChunk {
     }
 }
 
+fn manhattan_distance(a: Vec2, b: Vec2) -> f32 {
+    (a.x - b.x).abs() + (a.y - b.y).abs()
+}
+
+fn euclidean_distance(a: Vec2, b: Vec2) -> f32 {
+    a.distance(b)
+}
+
 struct VoronoiLayer;
 
 impl Layer for VoronoiLayer {
@@ -75,13 +86,13 @@ impl Layer for VoronoiLayer {
     fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
         // Get the closest point from the points layer
         let bounds = Bounds::from_point(chunk_idx.to_point(Self::Chunk::get_size()))
-            .expand(POINT_CHUNK_SIZE.x * 2.0, POINT_CHUNK_SIZE.y * 2.0);
+            .expand(POINT_CHUNK_SIZE.x * 5.0, POINT_CHUNK_SIZE.y * 5.0);
         let points = lookup.get_chunks_in::<PointsLayer>(bounds);
         let closest_point = points
             .iter()
             .min_by(|a, b| {
-                let a_dist = a.point.distance(chunk_idx.center(Self::Chunk::get_size()));
-                let b_dist = b.point.distance(chunk_idx.center(Self::Chunk::get_size()));
+                let a_dist = euclidean_distance(a.point, chunk_idx.center(Self::Chunk::get_size())) / a.strength;
+                let b_dist = euclidean_distance(b.point, chunk_idx.center(Self::Chunk::get_size())) / b.strength;
                 a_dist.partial_cmp(&b_dist).unwrap()
             })
             .unwrap();
@@ -95,7 +106,7 @@ impl Layer for VoronoiLayer {
     }
 
     fn get_dependencies(&self) -> Vec<Dependency> {
-        vec![Dependency::new::<PointsLayer>(Vec2::new(20.0, 20.0))]
+        vec![Dependency::new::<PointsLayer>(Vec2::new(POINT_CHUNK_SIZE.x * 5.0, POINT_CHUNK_SIZE.y * 5.0))]
     }
 }
 
@@ -106,7 +117,8 @@ impl Layer for VoronoiLayer {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins,PanCamPlugin))
+        .add_plugins(WorldInspectorPlugin::new())
         .insert_resource(ChunkIndex {
             index: HashMap::new(),
         })
@@ -127,7 +139,7 @@ pub fn setup_layers_manager(world: &mut World) {
 pub struct RectShape(Handle<Mesh>);
 
 pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, PanCam::default()));
     let rect = meshes.add(Rectangle::new(10.0, 10.0));
     commands.insert_resource(RectShape(rect));
 }

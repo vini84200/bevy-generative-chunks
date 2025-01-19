@@ -8,7 +8,7 @@ pub struct Bounds {
 }
 
 impl Bounds {
-    pub(crate) fn expand(&self, x: f32, y: f32) -> Bounds {
+    pub fn expand(&self, x: f32, y: f32) -> Bounds {
         Bounds {
             min: Vec2::new(self.min.x - x, self.min.y - y),
             max: Vec2::new(self.max.x + x, self.max.y + y),
@@ -89,7 +89,7 @@ impl ChunkIdx {
     // pub(crate) fn to_point(&self, chunk_width: f32, chunk_height: f32) -> Point {
     //     (self.x as f32 * chunk_width, self.y as f32 * chunk_height)
     // }
-    pub(crate) fn to_point(self, chunk_size: Point) -> Point {
+    pub fn to_point(self, chunk_size: Point) -> Point {
         Vec2::new(self.x as f32 * chunk_size.x, self.y as f32 * chunk_size.y)
     }
 
@@ -116,4 +116,4 @@ impl ChunkIdx {
     }
 }
 
-pub(crate) type Point = Vec2;
+pub type Point = Vec2;

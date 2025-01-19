@@ -1,0 +1,10 @@
+[package]
+name = "voronoi"
+edition = "2021"
+
+[dependencies]
+bevy-generative-chunks = { path = "../../" }
+bevy = "0.15.1"
+bevy_pancam = "0.17.0"
+rand = { version = "0.8.5" , features = ["small_rng"]}
+bevy-inspector-egui = "0.28.1"

@@ -115,7 +115,7 @@ impl LayerLookupChunk<'_> {
         self.get_chunk_from_idx::<L>(layer_id, chunk_idx)
     }
 
-    pub(crate) fn get_chunks_in<L: Layer + 'static>(&self, bounds: Bounds) -> Vec<L::Chunk>
+    pub fn get_chunks_in<L: Layer + 'static>(&self, bounds: Bounds) -> Vec<L::Chunk>
     where
         L::Chunk: Clone,
     {

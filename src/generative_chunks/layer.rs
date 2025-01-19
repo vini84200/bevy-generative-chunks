@@ -141,7 +141,7 @@ pub struct Dependency {
 }
 
 impl Dependency {
-    pub(crate) fn new<T: Layer + Sized + 'static>(padding: Point) -> Self {
+    pub fn new<T: Layer + Sized + 'static>(padding: Point) -> Self {
         Dependency {
             layer_id: LayerId::from_type::<T>(),
             padding,

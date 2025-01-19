@@ -17,7 +17,7 @@ impl IntoLayerClient for LayerClient {
 }
 
 impl LayerClient {
-    pub(crate) fn new(
+    pub fn new(
         center: Point,
         dependencies: Vec<Dependency>,
         strength: UsageStrategy,
