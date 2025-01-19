@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UsageStrategy {
     KeepAlive,
     Slow,
@@ -10,6 +10,12 @@ pub struct UsageCounter {
     keep_alive: u32,
     slow: u32,
     fast: u32,
+}
+
+impl Default for UsageCounter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl UsageCounter {

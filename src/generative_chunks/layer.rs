@@ -15,8 +15,6 @@ pub struct LayerConfig {
     layer_id: LayerId,
     /// The layer depends on these layers to be generated
     depends_on: Vec<Dependency>,
-    /// The margins are in real coordinates
-    margins: Point,
     /// Chunk size of the layer
     chunk_size: Point,
     /// Chunk storage
@@ -27,9 +25,7 @@ pub struct LayerConfig {
 
 impl LayerConfig {
     pub fn requires(&self) -> Vec<(LayerId, Bounds)> {
-        self.storage
-            .iter()
-            .map(|(idx, chunk)| {
+        self.storage.keys().flat_map(|idx| {
                 let Vec2 {
                     x: width,
                     y: height,
@@ -40,25 +36,23 @@ impl LayerConfig {
                     (dep.layer_id, bounds.add_padding(padding))
                 })
             })
-            .flatten()
             .collect()
         // TODO: Merge the bounds, if they overlap
     }
     pub fn ensure_generated(&mut self, bounds: &Bounds) {
         // Check if the bounds are already generated
         for chunk_idx in bounds.chunks(self.chunk_size) {
-            if !self.storage.contains_key(&chunk_idx) {
+            self.storage.entry(chunk_idx).or_insert_with(|| {
                 // Generate the chunk
-                let chunk = ChunkWrapper::new();
-                self.storage.insert(chunk_idx, chunk);
-            }
+                ChunkWrapper::new()
+            });
             let chunk_wrapper = self.storage.get_mut(&chunk_idx).unwrap();
             chunk_wrapper.usage_counter.increment(UsageStrategy::Fast); // TODO: Implement the correct usage strategy
         }
     }
 
     pub(crate) fn generate(&mut self, lookup: &LayerLookupChunk) {
-        for (chunk_idx, mut chunk) in self.storage.iter_mut() {
+        for (chunk_idx, chunk) in self.storage.iter_mut() {
             if chunk.chunk.is_none() {
                 let gen_chunk = (self.generate)(lookup, chunk_idx);
                 chunk.chunk = Some(gen_chunk);
@@ -68,10 +62,6 @@ impl LayerConfig {
 
     pub fn get_chunk_size(&self) -> Point {
         self.chunk_size
-    }
-
-    pub fn get_margin(&self) -> Point {
-        self.margins
     }
 
     pub fn get_layer_id(&self) -> LayerId {
@@ -95,7 +85,7 @@ pub trait IntoLayerConfig {
     fn into_layer_config(self) -> LayerConfig;
 }
 
-pub(crate) trait Chunk: Send + Sync + Downcast + Debug + 'static {
+pub trait Chunk: Send + Sync + Downcast + Debug + 'static {
     fn get_size() -> Vec2
     where
         Self: Sized;
@@ -121,7 +111,7 @@ impl ChunkWrapper {
     }
 }
 
-pub(crate) trait Layer {
+pub trait Layer {
     // Required
     type Chunk: Chunk;
 
@@ -130,10 +120,6 @@ pub(crate) trait Layer {
     // Optional
     fn get_dependencies(&self) -> Vec<Dependency> {
         vec![]
-    }
-
-    fn get_margin(&self) -> Point {
-        Vec2::new(0.0, 0.0)
     }
 
     // Given
@@ -149,7 +135,7 @@ pub(crate) trait Layer {
 /// The dependency of a layer
 /// The padding is in real coordinates
 #[derive(Debug)]
-pub(crate) struct Dependency {
+pub struct Dependency {
     layer_id: LayerId,
     padding: Point,
 }
@@ -180,7 +166,6 @@ where
         LayerConfig {
             layer_id: LayerId::from_type::<T>(),
             depends_on: self.get_dependencies(),
-            margins: self.get_margin(),
             chunk_size: T::Chunk::get_size(),
             storage: HashMap::new(),
             generate: Box::new(move |lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx| {

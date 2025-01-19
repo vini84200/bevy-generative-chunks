@@ -1,5 +1,4 @@
 use bevy::prelude::Vec2;
-use serde::Deserialize;
 
 // Bounds are always in real coordinates
 #[derive(Debug)]
@@ -90,7 +89,7 @@ impl ChunkIdx {
     // pub(crate) fn to_point(&self, chunk_width: f32, chunk_height: f32) -> Point {
     //     (self.x as f32 * chunk_width, self.y as f32 * chunk_height)
     // }
-    pub(crate) fn to_point(&self, chunk_size: Point) -> Point {
+    pub(crate) fn to_point(self, chunk_size: Point) -> Point {
         Vec2::new(self.x as f32 * chunk_size.x, self.y as f32 * chunk_size.y)
     }
 
@@ -109,7 +108,7 @@ impl ChunkIdx {
 }
 
 impl ChunkIdx {
-    pub(crate) fn to_bounds(&self, width: f32, height: f32) -> Bounds {
+    pub(crate) fn to_bounds(self, width: f32, height: f32) -> Bounds {
         Bounds::new(
             Vec2::new(self.x as f32 * width, self.y as f32 * height),
             Vec2::new((self.x + 1) as f32 * width, (self.y + 1) as f32 * height),

@@ -1,12 +1,12 @@
 use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
-use crate::generative_chunks::layer::{Chunk, Dependency, IntoLayerConfig, Layer, LayerConfig};
+use crate::generative_chunks::layer::{Chunk, IntoLayerConfig, Layer, LayerConfig};
 use crate::generative_chunks::layer_client::{IntoLayerClient, LayerClient};
 use crate::generative_chunks::layer_id::LayerId;
 use bevy::math::Vec2;
 use bimap::BiMap;
 use daggy::petgraph::dot::{Config, Dot};
 use daggy::petgraph::visit::Topo;
-use daggy::{Dag, NodeIndex};
+use daggy::Dag;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -18,7 +18,7 @@ pub struct LayersManagerBuilder {
 pub struct LayersManager {
     layers: HashMap<LayerId, RefCell<LayerConfig>>,
     dag: Dag<LayerId, ()>,
-    dag_index: BiMap<LayerId, NodeIndex>,
+    // dag_index: BiMap<LayerId, NodeIndex>,
     layer_client: Vec<LayerClient>,
 }
 
@@ -36,7 +36,7 @@ impl LayersManager {
         let chunk_idx = ChunkIdx::from_point(pos, width, height);
         let wrapped_chunk = layer.get_storage().get(&chunk_idx)?;
         let data = wrapped_chunk.get_chunk::<L::Chunk>();
-        data.and_then(|c| Some(c.clone()))
+        data.cloned()
     }
 
     pub fn get_chunks_in<L: Layer + 'static>(&self, bounds: Bounds) -> Vec<(ChunkIdx, L::Chunk)>
@@ -51,7 +51,7 @@ impl LayersManager {
             if let Some(chunk_wrapper) = chunk {
                 let data = chunk_wrapper.get_chunk::<L::Chunk>();
                 if let Some(data) = data {
-                    chunks.push((chunk_idx.clone(), data.clone()));
+                    chunks.push((chunk_idx, data.clone()));
                 }
             }
         }
@@ -68,7 +68,7 @@ impl LayersManager {
         for (chunk_idx, chunk_wrapper) in layer.get_storage().iter() {
             let data = chunk_wrapper.get_chunk::<L::Chunk>();
             if let Some(data) = data {
-                chunks.push((chunk_idx.clone(), data.clone()));
+                chunks.push((*chunk_idx, data.clone()));
             }
         }
         chunks
@@ -83,7 +83,7 @@ impl LayersManager {
     }
 }
 
-pub(crate) struct LayerLookupChunk<'a> {
+pub struct LayerLookupChunk<'a> {
     layers: &'a HashMap<LayerId, RefCell<LayerConfig>>,
 }
 
@@ -99,10 +99,10 @@ impl LayerLookupChunk<'_> {
         let layer = self.layers.get(&layer_id).unwrap().borrow();
         let chunk = layer.get_storage().get(&chunk_idx)?;
         let data = chunk.get_chunk::<L::Chunk>();
-        data.and_then(|c| Some(c.clone()))
+        data.cloned()
     }
 
-    fn get_chunk<L: Layer + 'static>(&self, layer_id: LayerId, pos: Point) -> Option<L::Chunk>
+    pub fn get_chunk<L: Layer + 'static>(&self, layer_id: LayerId, pos: Point) -> Option<L::Chunk>
     where
         L::Chunk: Clone,
     {
@@ -120,7 +120,6 @@ impl LayerLookupChunk<'_> {
         L::Chunk: Clone,
     {
         let layer_id = LayerId::from_type::<L>();
-        let layer = self.layers.get(&layer_id).unwrap().borrow();
         let mut chunks = Vec::new();
         for chunk_idx in bounds.chunks(L::Chunk::get_size()) {
             let chunk = self.get_chunk_from_idx::<L>(layer_id, chunk_idx);
@@ -133,7 +132,7 @@ impl LayerLookupChunk<'_> {
 }
 
 impl LayersManager {
-    pub(crate) fn print_dot(&self) {
+    pub fn print_dot(&self) {
         println!(
             "{:?}",
             Dot::with_config(
@@ -194,6 +193,12 @@ impl LayersManager {
     }
 }
 
+impl Default for LayersManagerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LayersManagerBuilder {
     pub fn new() -> Self {
         LayersManagerBuilder { layers: Vec::new() }
@@ -216,8 +221,8 @@ impl LayersManagerBuilder {
             let idx = dag_index.get_by_left(&layer.get_layer_id()).unwrap();
             dag.add_edges(layer.get_dependencies().iter().map(|id| {
                 (
-                    idx.clone(),
-                    dag_index.get_by_left(&id.get_layer_id()).unwrap().clone(),
+                    *idx,
+                    *dag_index.get_by_left(&id.get_layer_id()).unwrap(),
                     (),
                 )
             }))
@@ -230,7 +235,7 @@ impl LayersManagerBuilder {
         LayersManager {
             layers,
             dag,
-            dag_index,
+            // dag_index,
             layer_client: vec![],
         }
     }

@@ -30,14 +30,14 @@ impl LayerClient {
         }
     }
 
-    fn activate(&mut self) {
+    pub fn activate(&mut self) {
         self.active = true;
     }
-    fn deactivate(&mut self) {
+    pub fn deactivate(&mut self) {
         self.active = false;
     }
 
-    pub(crate) fn is_active(&self) -> bool {
+    pub fn is_active(&self) -> bool {
         self.active
     }
 
@@ -47,6 +47,10 @@ impl LayerClient {
 
     pub fn get_dependencies(&self) -> &Vec<Dependency> {
         &self.dependencies
+    }
+    
+    pub fn get_strategy(&self) -> UsageStrategy {
+        self.strategy
     }
 }
 

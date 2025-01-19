@@ -1,12 +1,3 @@
-use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
-use crate::generative_chunks::usage::UsageStrategy;
-use bevy::prelude::Vec2;
-use daggy::Walker;
-use downcast_rs::{impl_downcast, Downcast};
-use layer_client::LayerClient;
-use layer_manager::LayerLookupChunk;
-use std::fmt::Debug;
-
 pub mod bounds;
 pub mod layer;
 pub mod layer_client;
@@ -20,9 +11,10 @@ mod test {
     use super::*;
 
     mod test_layer {
-        use super::*;
+        use bevy::math::Vec2;
+        use crate::generative_chunks::bounds::ChunkIdx;
         use crate::generative_chunks::layer::{Chunk, Layer};
-        use crate::generative_chunks::layer_manager::LayersManagerBuilder;
+        use crate::generative_chunks::layer_manager::{LayerLookupChunk, LayersManagerBuilder};
         struct TestLayer;
 
         #[derive(Debug)]
@@ -37,7 +29,7 @@ mod test {
         impl Layer for TestLayer {
             type Chunk = TestChunk;
 
-            fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+            fn generate(&self, _: &LayerLookupChunk, _: &ChunkIdx) -> Self::Chunk {
                 TestChunk
             }
         }
@@ -51,9 +43,10 @@ mod test {
     }
 
     mod test_layer_with_dependencies {
-        use super::*;
+        use bevy::math::Vec2;
+        use crate::generative_chunks::bounds::ChunkIdx;
         use crate::generative_chunks::layer::{Chunk, Dependency, Layer};
-        use crate::generative_chunks::layer_manager::LayersManagerBuilder;
+        use crate::generative_chunks::layer_manager::{LayerLookupChunk, LayersManagerBuilder};
 
         #[derive(Debug)]
         struct ChunkA;
@@ -69,7 +62,7 @@ mod test {
         impl Layer for TestLayerA {
             type Chunk = ChunkA;
 
-            fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+            fn generate(&self, _: &LayerLookupChunk, _: &ChunkIdx) -> Self::Chunk {
                 ChunkA
             }
 
@@ -83,7 +76,7 @@ mod test {
         impl Layer for TestLayerB {
             type Chunk = ChunkA;
 
-            fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+            fn generate(&self, _: &LayerLookupChunk, _: &ChunkIdx) -> Self::Chunk {
                 ChunkA
             }
         }
@@ -100,9 +93,12 @@ mod test {
     }
 
     mod test_simple_generation {
-        use super::*;
+        use bevy::math::Vec2;
+        use crate::generative_chunks::bounds::ChunkIdx;
         use crate::generative_chunks::layer::{Chunk, Dependency, Layer};
-        use crate::generative_chunks::layer_manager::LayersManagerBuilder;
+        use crate::generative_chunks::layer_client::LayerClient;
+        use crate::generative_chunks::layer_manager::{LayerLookupChunk, LayersManagerBuilder};
+        use crate::generative_chunks::usage::UsageStrategy;
 
         #[derive(Debug, Clone)]
         struct ChunkA {
@@ -121,7 +117,7 @@ mod test {
         impl Layer for TestLayerA {
             type Chunk = ChunkA;
 
-            fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+            fn generate(&self, _: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
                 println!("Generating chunk {:?}", chunk_idx);
                 ChunkA {
                     x: chunk_idx.x,
@@ -198,11 +194,15 @@ mod test {
     }
 
     mod test_simple_generation_with_deps {
+        use bevy::math::Vec2;
         use super::*;
         use crate::generative_chunks::layer::{Dependency, Layer};
-        use crate::generative_chunks::layer_manager::LayersManagerBuilder;
+        use crate::generative_chunks::layer_manager::{LayerLookupChunk, LayersManagerBuilder};
         use layer::Chunk;
         use rand::{Rng, SeedableRng};
+        use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
+        use crate::generative_chunks::layer_client::LayerClient;
+        use crate::generative_chunks::usage::UsageStrategy;
 
         /// For this test we will have a layer that depends on another layer
         /// The points layer will have a chunk size of 5x5 and will generate a single random point
@@ -228,7 +228,7 @@ mod test {
         impl Layer for PointsLayer {
             type Chunk = PointChunk;
 
-            fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+            fn generate(&self, _: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
                 // Get thread random with the chunk_idx as seed
                 let seed = chunk_idx.x + chunk_idx.y * 23;
                 let mut random = rand::prelude::SmallRng::seed_from_u64(seed as u64);
@@ -255,7 +255,7 @@ mod test {
 
         impl Chunk for VoronoiChunk {
             fn get_size() -> Vec2 {
-                return Vec2::new(1., 1.);
+                Vec2::new(1., 1.)
             }
         }
 

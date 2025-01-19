@@ -1,8 +1,7 @@
-mod generative_chunks;
+pub mod generative_chunks;
 
 use crate::generative_chunks::bounds::Point;
 use crate::generative_chunks::usage::UsageStrategy;
-use bevy::ecs::entity::Entities;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use generative_chunks::bounds::{Bounds, ChunkIdx};
@@ -36,7 +35,7 @@ impl Chunk for PointChunk {
 impl Layer for PointsLayer {
     type Chunk = PointChunk;
 
-    fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
+    fn generate(&self, _: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
         // Get thread random with the chunk_idx as seed
         let seed = chunk_idx.x + chunk_idx.y * 512;
         let mut random = rand::prelude::SmallRng::seed_from_u64(seed as u64);
@@ -117,7 +116,7 @@ fn main() {
 }
 
 pub fn setup_layers_manager(world: &mut World) {
-    let mut manager = LayersManagerBuilder::new()
+    let manager = LayersManagerBuilder::new()
         .add_layer(PointsLayer)
         .add_layer(VoronoiLayer)
         .build();
@@ -128,15 +127,15 @@ pub fn setup_layers_manager(world: &mut World) {
 pub struct RectShape(Handle<Mesh>);
 
 pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
     let rect = meshes.add(Rectangle::new(10.0, 10.0));
     commands.insert_resource(RectShape(rect));
 }
 
 pub fn regenerate(
-    mut commands: Commands,
+    // mut commands: Commands,
     mut layer_manager: NonSendMut<LayersManager>,
-    mut query: Query<&Transform, With<Camera2d>>,
+    query: Query<&Transform, With<Camera2d>>,
 ) {
     let camera_transform = query.single();
     let camera_position = camera_transform.translation;
