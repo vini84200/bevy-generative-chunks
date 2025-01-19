@@ -3,18 +3,16 @@ use crate::generative_chunks::usage::UsageStrategy;
 use bevy::prelude::Vec2;
 use daggy::Walker;
 use downcast_rs::{impl_downcast, Downcast};
-use std::fmt::Debug;
 use layer_client::LayerClient;
 use layer_manager::LayerLookupChunk;
+use std::fmt::Debug;
 
-pub mod usage;
 pub mod bounds;
+pub mod layer;
 pub mod layer_client;
 pub mod layer_id;
 pub mod layer_manager;
-pub mod layer;
-
-
+pub mod usage;
 
 // Tests
 #[cfg(test)]
@@ -22,9 +20,9 @@ mod test {
     use super::*;
 
     mod test_layer {
+        use super::*;
         use crate::generative_chunks::layer::{Chunk, Layer};
         use crate::generative_chunks::layer_manager::LayersManagerBuilder;
-        use super::*;
         struct TestLayer;
 
         #[derive(Debug)]
@@ -36,7 +34,6 @@ mod test {
             }
         }
 
-
         impl Layer for TestLayer {
             type Chunk = TestChunk;
 
@@ -45,21 +42,18 @@ mod test {
             }
         }
 
-
         #[test]
         fn test_layers_manager() {
-            let mut layers_manager = LayersManagerBuilder::new()
-                .add_layer(TestLayer)
-                .build();
+            let mut layers_manager = LayersManagerBuilder::new().add_layer(TestLayer).build();
             layers_manager.print_dot();
             layers_manager.regenerate();
         }
     }
 
     mod test_layer_with_dependencies {
+        use super::*;
         use crate::generative_chunks::layer::{Chunk, Dependency, Layer};
         use crate::generative_chunks::layer_manager::LayersManagerBuilder;
-        use super::*;
 
         #[derive(Debug)]
         struct ChunkA;
@@ -80,9 +74,7 @@ mod test {
             }
 
             fn get_dependencies(&self) -> Vec<Dependency> {
-                vec![
-                    Dependency::new::<TestLayerB>(Vec2::new(1.0, 1.0))
-                ]
+                vec![Dependency::new::<TestLayerB>(Vec2::new(1.0, 1.0))]
             }
         }
 
@@ -108,9 +100,9 @@ mod test {
     }
 
     mod test_simple_generation {
+        use super::*;
         use crate::generative_chunks::layer::{Chunk, Dependency, Layer};
         use crate::generative_chunks::layer_manager::LayersManagerBuilder;
-        use super::*;
 
         #[derive(Debug, Clone)]
         struct ChunkA {
@@ -140,33 +132,77 @@ mod test {
 
         #[test]
         fn test_layers_manager() {
-            let mut layers_manager = LayersManagerBuilder::new()
-                .add_layer(TestLayerA)
-                .build();
-            layers_manager.add_layer_client(LayerClient::new(Vec2::new(0.0, 0.0), vec![
-                Dependency::new::<TestLayerA>(Vec2::new(2.0, 2.0))
-            ], UsageStrategy::Fast));
+            let mut layers_manager = LayersManagerBuilder::new().add_layer(TestLayerA).build();
+            layers_manager.add_layer_client(LayerClient::new(
+                Vec2::new(0.0, 0.0),
+                vec![Dependency::new::<TestLayerA>(Vec2::new(2.0, 2.0))],
+                UsageStrategy::Fast,
+            ));
             layers_manager.regenerate();
             // Check if the chunk is generated correctly
-            assert!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0)).is_some());
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0)).unwrap().x, 0);
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0)).unwrap().y, 0);
-            assert!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0)).is_some());
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0)).unwrap().x, 2);
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0)).unwrap().y, 2);
-            assert!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(3.0, 3.0)).is_none());
-            assert!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0)).is_some());
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0)).unwrap().x, -1);
-            assert_eq!(layers_manager.get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0)).unwrap().y, -1);
+            assert!(layers_manager
+                .get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0))
+                .is_some());
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0))
+                    .unwrap()
+                    .x,
+                0
+            );
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(0.0, 0.0))
+                    .unwrap()
+                    .y,
+                0
+            );
+            assert!(layers_manager
+                .get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0))
+                .is_some());
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0))
+                    .unwrap()
+                    .x,
+                2
+            );
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(2.0, 2.0))
+                    .unwrap()
+                    .y,
+                2
+            );
+            assert!(layers_manager
+                .get_chunk::<TestLayerA>(Vec2::new(3.0, 3.0))
+                .is_none());
+            assert!(layers_manager
+                .get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0))
+                .is_some());
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0))
+                    .unwrap()
+                    .x,
+                -1
+            );
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<TestLayerA>(Vec2::new(-1.0, -1.0))
+                    .unwrap()
+                    .y,
+                -1
+            );
         }
     }
 
     mod test_simple_generation_with_deps {
         use super::*;
-        use rand::{Rng, SeedableRng};
-        use layer::Chunk;
         use crate::generative_chunks::layer::{Dependency, Layer};
         use crate::generative_chunks::layer_manager::LayersManagerBuilder;
+        use layer::Chunk;
+        use rand::{Rng, SeedableRng};
 
         /// For this test we will have a layer that depends on another layer
         /// The points layer will have a chunk size of 5x5 and will generate a single random point
@@ -198,8 +234,15 @@ mod test {
                 let mut random = rand::prelude::SmallRng::seed_from_u64(seed as u64);
 
                 PointChunk {
-                    point: Vec2::new(random.gen_range(0.0..5.0) + chunk_idx.x as f32, random.gen_range(0.0..5.0) + chunk_idx.y as f32),
-                    color: (random.gen_range(0..255), random.gen_range(0..255), random.gen_range(0..255)),
+                    point: Vec2::new(
+                        random.gen_range(0.0..5.0) + chunk_idx.x as f32,
+                        random.gen_range(0.0..5.0) + chunk_idx.y as f32,
+                    ),
+                    color: (
+                        random.gen_range(0..255),
+                        random.gen_range(0..255),
+                        random.gen_range(0..255),
+                    ),
                 }
             }
         }
@@ -226,20 +269,21 @@ mod test {
                 let bounds = Bounds::from_point(chunk_idx.to_point(Self::Chunk::get_size()))
                     .expand(10.0, 10.0);
                 let points = lookup.get_chunks_in::<PointsLayer>(bounds);
-                let closest_point = points.iter().min_by(|a, b| {
-                    let a_dist = a.point.distance(chunk_idx.center(Self::Chunk::get_size()));
-                    let b_dist = b.point.distance(chunk_idx.center(Self::Chunk::get_size()));
-                    a_dist.partial_cmp(&b_dist).unwrap()
-                }).unwrap();
+                let closest_point = points
+                    .iter()
+                    .min_by(|a, b| {
+                        let a_dist = a.point.distance(chunk_idx.center(Self::Chunk::get_size()));
+                        let b_dist = b.point.distance(chunk_idx.center(Self::Chunk::get_size()));
+                        a_dist.partial_cmp(&b_dist).unwrap()
+                    })
+                    .unwrap();
                 VoronoiChunk {
                     color: closest_point.color,
                 }
             }
 
             fn get_dependencies(&self) -> Vec<Dependency> {
-                vec![
-                    Dependency::new::<PointsLayer>(Vec2::new(10.0, 10.0))
-                ]
+                vec![Dependency::new::<PointsLayer>(Vec2::new(10.0, 10.0))]
             }
         }
 
@@ -249,14 +293,23 @@ mod test {
                 .add_layer(PointsLayer)
                 .add_layer(VoronoiLayer)
                 .build();
-            layers_manager.add_layer_client(LayerClient::new(Vec2::new(0.0, 0.0), vec![
-                Dependency::new::<VoronoiLayer>(Vec2::new(8.0, 9.0))
-            ], UsageStrategy::Fast));
+            layers_manager.add_layer_client(LayerClient::new(
+                Vec2::new(0.0, 0.0),
+                vec![Dependency::new::<VoronoiLayer>(Vec2::new(8.0, 9.0))],
+                UsageStrategy::Fast,
+            ));
             layers_manager.regenerate();
             // Check if the chunk is generated correctly
-            assert!(layers_manager.get_chunk::<VoronoiLayer>(Vec2::new(0.0, 0.0)).is_some());
-            assert_eq!(layers_manager.get_chunk::<VoronoiLayer>(Vec2::new(0.0, 0.0)).unwrap().color, (193, 180, 73));
+            assert!(layers_manager
+                .get_chunk::<VoronoiLayer>(Vec2::new(0.0, 0.0))
+                .is_some());
+            assert_eq!(
+                layers_manager
+                    .get_chunk::<VoronoiLayer>(Vec2::new(0.0, 0.0))
+                    .unwrap()
+                    .color,
+                (193, 180, 73)
+            );
         }
     }
 }
-

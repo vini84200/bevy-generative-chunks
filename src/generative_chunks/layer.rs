@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use bevy::math::Vec2;
-use downcast_rs::{impl_downcast, Downcast};
-use std::fmt::Debug;
 use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
 use crate::generative_chunks::layer_id::LayerId;
 use crate::generative_chunks::layer_manager::LayerLookupChunk;
 use crate::generative_chunks::usage::{UsageCounter, UsageStrategy};
+use bevy::math::Vec2;
+use downcast_rs::{impl_downcast, Downcast};
+use std::collections::HashMap;
+use std::fmt::Debug;
 
 type ChunkGenerator = Box<dyn Fn(&LayerLookupChunk, &ChunkIdx) -> Box<dyn Chunk>>;
 
@@ -27,14 +27,21 @@ pub struct LayerConfig {
 
 impl LayerConfig {
     pub fn requires(&self) -> Vec<(LayerId, Bounds)> {
-        self.storage.iter().map(|(idx, chunk)| {
-            let Vec2 { x: width, y: height } = self.chunk_size;
-            let bounds = idx.to_bounds(width, height);
-            self.depends_on.iter().map(move |dep| {
-                let padding = dep.padding;
-                (dep.layer_id, bounds.add_padding(padding))
+        self.storage
+            .iter()
+            .map(|(idx, chunk)| {
+                let Vec2 {
+                    x: width,
+                    y: height,
+                } = self.chunk_size;
+                let bounds = idx.to_bounds(width, height);
+                self.depends_on.iter().map(move |dep| {
+                    let padding = dep.padding;
+                    (dep.layer_id, bounds.add_padding(padding))
+                })
             })
-        }).flatten().collect()
+            .flatten()
+            .collect()
         // TODO: Merge the bounds, if they overlap
     }
     pub fn ensure_generated(&mut self, bounds: &Bounds) {
@@ -47,7 +54,6 @@ impl LayerConfig {
             }
             let chunk_wrapper = self.storage.get_mut(&chunk_idx).unwrap();
             chunk_wrapper.usage_counter.increment(UsageStrategy::Fast); // TODO: Implement the correct usage strategy
-
         }
     }
 

@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-use std::cell::RefCell;
-use daggy::{Dag, NodeIndex};
-use bimap::BiMap;
-use bevy::math::Vec2;
-use daggy::petgraph::dot::{Config, Dot};
-use daggy::petgraph::visit::Topo;
 use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
 use crate::generative_chunks::layer::{Chunk, Dependency, IntoLayerConfig, Layer, LayerConfig};
 use crate::generative_chunks::layer_client::{IntoLayerClient, LayerClient};
 use crate::generative_chunks::layer_id::LayerId;
+use bevy::math::Vec2;
+use bimap::BiMap;
+use daggy::petgraph::dot::{Config, Dot};
+use daggy::petgraph::visit::Topo;
+use daggy::{Dag, NodeIndex};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 pub struct LayersManagerBuilder {
     layers: Vec<LayerConfig>,
@@ -29,7 +29,10 @@ impl LayersManager {
     {
         let layer_id = LayerId::from_type::<L>();
         let layer = self.layers.get(&layer_id).unwrap().borrow();
-        let Vec2 { x: width, y: height } = layer.get_chunk_size();
+        let Vec2 {
+            x: width,
+            y: height,
+        } = layer.get_chunk_size();
         let chunk_idx = ChunkIdx::from_point(pos, width, height);
         let wrapped_chunk = layer.get_storage().get(&chunk_idx)?;
         let data = wrapped_chunk.get_chunk::<L::Chunk>();
@@ -85,7 +88,11 @@ pub(crate) struct LayerLookupChunk<'a> {
 }
 
 impl LayerLookupChunk<'_> {
-    fn get_chunk_from_idx<L: Layer + 'static>(&self, layer_id: LayerId, chunk_idx: ChunkIdx) -> Option<L::Chunk>
+    fn get_chunk_from_idx<L: Layer + 'static>(
+        &self,
+        layer_id: LayerId,
+        chunk_idx: ChunkIdx,
+    ) -> Option<L::Chunk>
     where
         L::Chunk: Clone,
     {
@@ -100,7 +107,10 @@ impl LayerLookupChunk<'_> {
         L::Chunk: Clone,
     {
         // Get the chunk index
-        let Vec2 { x: width, y: height } = L::Chunk::get_size();
+        let Vec2 {
+            x: width,
+            y: height,
+        } = L::Chunk::get_size();
         let chunk_idx = ChunkIdx::from_point(pos, width, height);
         self.get_chunk_from_idx::<L>(layer_id, chunk_idx)
     }
@@ -124,11 +134,16 @@ impl LayerLookupChunk<'_> {
 
 impl LayersManager {
     pub(crate) fn print_dot(&self) {
-        println!("{:?}", Dot::with_config(&self.dag.graph(), &[
-            Config::EdgeNoLabel,
-            // Config::NodeIndexLabel
-        ]
-        ));
+        println!(
+            "{:?}",
+            Dot::with_config(
+                &self.dag.graph(),
+                &[
+                    Config::EdgeNoLabel,
+                    // Config::NodeIndexLabel
+                ]
+            )
+        );
     }
 
     pub fn regenerate(&mut self) {
@@ -138,8 +153,14 @@ impl LayersManager {
                 continue;
             }
             for dep in layer_client.get_dependencies().iter() {
-                let mut layer = self.layers.get_mut(&dep.get_layer_id()).unwrap().borrow_mut();
-                layer.ensure_generated(&Bounds::from_point(layer_client.get_center()).add_padding(dep.get_padding()));
+                let mut layer = self
+                    .layers
+                    .get_mut(&dep.get_layer_id())
+                    .unwrap()
+                    .borrow_mut();
+                layer.ensure_generated(
+                    &Bounds::from_point(layer_client.get_center()).add_padding(dep.get_padding()),
+                );
             }
         }
 
@@ -175,9 +196,7 @@ impl LayersManager {
 
 impl LayersManagerBuilder {
     pub fn new() -> Self {
-        LayersManagerBuilder {
-            layers: Vec::new(),
-        }
+        LayersManagerBuilder { layers: Vec::new() }
     }
 
     pub fn add_layer(mut self, layer: impl IntoLayerConfig) -> Self {
@@ -195,9 +214,14 @@ impl LayersManagerBuilder {
         }
         for layer in self.layers.iter() {
             let idx = dag_index.get_by_left(&layer.get_layer_id()).unwrap();
-            dag.add_edges(
-                layer.get_dependencies().iter().map(|id| (idx.clone(), dag_index.get_by_left(&id.get_layer_id()).unwrap().clone(), ()))
-            ).expect("Adding edges to DAG created a cycle");
+            dag.add_edges(layer.get_dependencies().iter().map(|id| {
+                (
+                    idx.clone(),
+                    dag_index.get_by_left(&id.get_layer_id()).unwrap().clone(),
+                    (),
+                )
+            }))
+            .expect("Adding edges to DAG created a cycle");
         }
         for layer in self.layers {
             layers.insert(layer.get_layer_id(), RefCell::new(layer));
