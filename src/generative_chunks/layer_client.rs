@@ -1,5 +1,7 @@
-use crate::generative_chunks::bounds::Point;
+use std::collections::HashMap;
+use crate::generative_chunks::bounds::{ChunkIdx, Point};
 use crate::generative_chunks::layer::Dependency;
+use crate::generative_chunks::layer_id::LayerId;
 use crate::generative_chunks::usage::UsageStrategy;
 
 #[derive(Debug)]

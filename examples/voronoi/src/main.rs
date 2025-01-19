@@ -150,7 +150,7 @@ pub fn regenerate(
     query: Query<&Transform, With<Camera2d>>,
 ) {
     let camera_transform = query.single();
-    let camera_position = camera_transform.translation;
+    let camera_position = camera_transform.translation.xy();
 
     // let bounds = Bounds::new(
     //     Vec2::new(camera_position.x - 100.0, camera_position.y - 100.0),
@@ -159,8 +159,8 @@ pub fn regenerate(
 
     layer_manager.clear_layer_clients();
     layer_manager.add_layer_client(LayerClient::new(
-        camera_position.xy(),
-        vec![Dependency::new::<VoronoiLayer>(Vec2::new(50.0, 50.0))],
+        camera_position,
+        vec![Dependency::new::<VoronoiLayer>(Vec2::new(10.0, 10.0))],
         UsageStrategy::Fast,
     ));
 
@@ -209,5 +209,11 @@ fn draw(
             chunk_index.index.insert(idx, entity.id());
             println!("Drawing chunk at {:?}", idx);
         }
+    }
+    for idx in layer_manager.get_deleted_chunks::<VoronoiLayer>() {
+        if let Some(entity) = chunk_index.index.remove(idx) {
+            commands.entity(entity).despawn();
+            println!("Despawning chunk at {:?}", idx);
+        } 
     }
 }

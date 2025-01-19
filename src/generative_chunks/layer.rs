@@ -1,6 +1,7 @@
 use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
 use crate::generative_chunks::layer_id::LayerId;
 use crate::generative_chunks::layer_manager::LayerLookupChunk;
+use crate::generative_chunks::usage::UsageStrategy::Fast;
 use crate::generative_chunks::usage::{UsageCounter, UsageStrategy};
 use bevy::math::Vec2;
 use downcast_rs::{impl_downcast, Downcast};
@@ -22,10 +23,15 @@ pub struct LayerConfig {
     /// Generate chunk function
     generate: ChunkGenerator,
 }
+pub(crate) struct LayerGenerationResult {
+    pub(crate) deleted: Vec<ChunkIdx>,
+}
 
 impl LayerConfig {
     pub fn requires(&self) -> Vec<(LayerId, Bounds)> {
-        self.storage.keys().flat_map(|idx| {
+        self.storage
+            .keys()
+            .flat_map(|idx| {
                 let Vec2 {
                     x: width,
                     y: height,
@@ -51,13 +57,30 @@ impl LayerConfig {
         }
     }
 
-    pub(crate) fn generate(&mut self, lookup: &LayerLookupChunk) {
+    pub(crate) fn generate(&mut self, lookup: &LayerLookupChunk) -> LayerGenerationResult {
+        let mut to_delete = Vec::new();
         for (chunk_idx, chunk) in self.storage.iter_mut() {
-            if chunk.chunk.is_none() {
-                let gen_chunk = (self.generate)(lookup, chunk_idx);
-                chunk.chunk = Some(gen_chunk);
+            // Check if the chunk usage is zero
+            match chunk.usage_counter.best_usage() {
+                None => {
+                    to_delete.push(*chunk_idx);
+                }
+                Some(Fast) => {
+                    if chunk.chunk.is_none() {
+                        let gen_chunk = (self.generate)(lookup, chunk_idx);
+                        chunk.chunk = Some(gen_chunk);
+                    }
+                }
+                _ => {
+                    // Do nothing
+                }
             }
         }
+        for chunk_idx in to_delete.iter() {
+            self.storage.remove(chunk_idx);
+        }
+
+        LayerGenerationResult { deleted: to_delete }
     }
 
     pub fn get_chunk_size(&self) -> Point {
@@ -78,6 +101,12 @@ impl LayerConfig {
 
     pub fn get_dependencies(&self) -> &Vec<Dependency> {
         &self.depends_on
+    }
+
+    pub(crate) fn clear_usage(&mut self) {
+        for chunk in self.storage.values_mut() {
+            chunk.usage_counter.clear();
+        }
     }
 }
 

@@ -3,7 +3,6 @@ use crate::generative_chunks::layer::{Chunk, IntoLayerConfig, Layer, LayerConfig
 use crate::generative_chunks::layer_client::{IntoLayerClient, LayerClient};
 use crate::generative_chunks::layer_id::LayerId;
 use bevy::math::Vec2;
-use bimap::BiMap;
 use daggy::petgraph::dot::{Config, Dot};
 use daggy::petgraph::visit::Topo;
 use daggy::Dag;
@@ -18,8 +17,9 @@ pub struct LayersManagerBuilder {
 pub struct LayersManager {
     layers: HashMap<LayerId, RefCell<LayerConfig>>,
     dag: Dag<LayerId, ()>,
-    // dag_index: BiMap<LayerId, NodeIndex>,
     layer_client: Vec<LayerClient>,
+    /// List of chunks to delete
+    delete_list: HashMap<LayerId, Vec<ChunkIdx>>,
 }
 
 impl LayersManager {
@@ -81,6 +81,10 @@ impl LayersManager {
     pub fn clear_layer_clients(&mut self) {
         self.layer_client.clear();
     }
+    pub fn get_deleted_chunks<L:Layer+'static>(&self) -> &Vec<ChunkIdx> {
+        let layer_id = LayerId::from_type::<L>();
+        self.delete_list.get(&layer_id).unwrap()
+    }
 }
 
 pub struct LayerLookupChunk<'a> {
@@ -129,6 +133,7 @@ impl LayerLookupChunk<'_> {
         }
         chunks
     }
+    
 }
 
 impl LayersManager {
@@ -145,24 +150,28 @@ impl LayersManager {
         );
     }
 
-    pub fn regenerate(&mut self) {
-        // Check what the layer clients need to be regenerated
-        for layer_client in self.layer_client.iter_mut() {
-            if !layer_client.is_active() {
-                continue;
-            }
-            for dep in layer_client.get_dependencies().iter() {
-                let mut layer = self
-                    .layers
-                    .get_mut(&dep.get_layer_id())
-                    .unwrap()
-                    .borrow_mut();
-                layer.ensure_generated(
-                    &Bounds::from_point(layer_client.get_center()).add_padding(dep.get_padding()),
-                );
-            }
+    fn clear_usage(&mut self) {
+        for layer in self.layers.values() {
+            layer.borrow_mut().clear_usage();
         }
+    }
 
+    fn clear_deleted(&mut self) {
+        self.delete_list.iter_mut().for_each(|(_, list)| {
+            list.clear();
+        });
+    }
+
+    pub fn regenerate(&mut self) {
+        self.clear_usage();
+        self.clear_deleted();
+        // Check what the layer clients need to be regenerated
+        self.check_client_usages();
+
+        self.generate_requirements();
+    }
+
+    fn generate_requirements(&mut self) {
         // Transverse the DAG in topological order
         let mut topo = Topo::new(&self.dag);
         // Stack so we may generate the chunks in reverse topological order later
@@ -188,8 +197,31 @@ impl LayersManager {
             let layer_lookup = LayerLookupChunk {
                 layers: &self.layers,
             };
-            layer.generate(&layer_lookup);
+            let result = layer.generate(&layer_lookup);
+            // Add the chunks to the delete list
+            self.delete_list
+                .get_mut(&layer_id)
+                .unwrap()
+                .extend(result.deleted);
         });
+    }
+
+    fn check_client_usages(&mut self) {
+        for layer_client in self.layer_client.iter_mut() {
+            if !layer_client.is_active() {
+                continue;
+            }
+            for dep in layer_client.get_dependencies().iter() {
+                let mut layer = self
+                    .layers
+                    .get_mut(&dep.get_layer_id())
+                    .unwrap()
+                    .borrow_mut();
+                layer.ensure_generated(
+                    &Bounds::from_point(layer_client.get_center()).add_padding(dep.get_padding()),
+                );
+            }
+        }
     }
 }
 
@@ -212,20 +244,21 @@ impl LayersManagerBuilder {
     pub fn build(self) -> LayersManager {
         let mut layers: HashMap<LayerId, RefCell<LayerConfig>> = HashMap::new();
         let mut dag = Dag::new();
-        let mut dag_index = BiMap::new();
+        let mut dag_index = HashMap::new();
+        let mut delete_list = HashMap::new();
 
         for layer in self.layers.iter() {
             dag_index.insert(layer.get_layer_id(), dag.add_node(layer.get_layer_id()));
+            delete_list.insert(layer.get_layer_id(), Vec::new());
         }
         for layer in self.layers.iter() {
-            let idx = dag_index.get_by_left(&layer.get_layer_id()).unwrap();
-            dag.add_edges(layer.get_dependencies().iter().map(|id| {
-                (
-                    *idx,
-                    *dag_index.get_by_left(&id.get_layer_id()).unwrap(),
-                    (),
-                )
-            }))
+            let idx = dag_index.get(&layer.get_layer_id()).unwrap();
+            dag.add_edges(
+                layer
+                    .get_dependencies()
+                    .iter()
+                    .map(|id| (*idx, *dag_index.get(&id.get_layer_id()).unwrap(), ())),
+            )
             .expect("Adding edges to DAG created a cycle");
         }
         for layer in self.layers {
@@ -235,8 +268,8 @@ impl LayersManagerBuilder {
         LayersManager {
             layers,
             dag,
-            // dag_index,
             layer_client: vec![],
+            delete_list,
         }
     }
 }

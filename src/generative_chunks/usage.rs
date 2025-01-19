@@ -12,6 +12,30 @@ pub struct UsageCounter {
     fast: u32,
 }
 
+impl UsageCounter {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.keep_alive == 0 && self.slow == 0 && self.fast == 0
+    }
+    pub(crate) fn clear(&mut self) {
+        self.keep_alive = 0;
+        self.slow = 0;
+        self.fast = 0;
+    }
+    
+    pub fn should_keep_alive(&self) -> bool {
+        self.keep_alive > 0
+    }
+    
+    pub fn should_generate_slow(&self) -> bool {
+        self.slow > 0
+    }
+    
+    pub fn should_generate_fast(&self) -> bool {
+        self.fast > 0
+    }
+    
+}
+
 impl Default for UsageCounter {
     fn default() -> Self {
         Self::new()
