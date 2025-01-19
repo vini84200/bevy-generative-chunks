@@ -68,7 +68,7 @@ impl Layer for VoronoiLayer {
     fn generate(&self, lookup: &LayerLookupChunk, chunk_idx: &ChunkIdx) -> Self::Chunk {
         // Get the closest point from the points layer
         let bounds = Bounds::from_point(chunk_idx.to_point(Self::Chunk::get_size()))
-            .expand(POINT_CHUNK_SIZE.x * 4.0, POINT_CHUNK_SIZE.y * 4.0);
+            .expand(POINT_CHUNK_SIZE.x * 2.0, POINT_CHUNK_SIZE.y * 2.0);
         let points = lookup.get_chunks_in::<PointsLayer>(bounds);
         let closest_point = points.iter().min_by(|a, b| {
             let a_dist = a.point.distance(chunk_idx.center(Self::Chunk::get_size()));

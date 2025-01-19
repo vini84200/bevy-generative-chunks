@@ -427,8 +427,8 @@ mod test {
         struct TestChunk;
 
         impl Chunk for TestChunk {
-            fn get_size() -> (f32, f32) {
-                (1., 1.)
+            fn get_size() -> Vec2 {
+                Vec2::new(1., 1.)
             }
         }
 
@@ -461,8 +461,8 @@ mod test {
         struct TestLayerA;
 
         impl Chunk for ChunkA {
-            fn get_size() -> (f32, f32) {
-                (1., 1.)
+            fn get_size() -> Vec2 {
+                Vec2::new(1., 1.)
             }
         }
 
@@ -513,8 +513,8 @@ mod test {
         struct TestLayerA;
 
         impl Chunk for ChunkA {
-            fn get_size() -> (f32, f32) {
-                (1., 1.)
+            fn get_size() -> Vec2 {
+                Vec2::new(1., 1.)
             }
         }
 
@@ -573,8 +573,8 @@ mod test {
 
         struct PointsLayer;
         impl Chunk for PointChunk {
-            fn get_size() -> (f32, f32) {
-                return (5., 5.);
+            fn get_size() -> Vec2 {
+                Vec2::new(5., 5.)
             }
         }
 
@@ -600,8 +600,8 @@ mod test {
         }
 
         impl Chunk for VoronoiChunk {
-            fn get_size() -> (f32, f32) {
-                return (1., 1.);
+            fn get_size() -> Vec2 {
+                return Vec2::new(1., 1.);
             }
         }
 
