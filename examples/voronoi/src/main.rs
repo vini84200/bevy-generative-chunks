@@ -143,7 +143,7 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.spawn((Camera2d, PanCam::default()));
     let rect = meshes.add(Rectangle::new(10.0, 10.0));
     commands.insert_resource(RectShape(rect));
-    
+
 }
 
 pub fn regenerate(
@@ -158,10 +158,9 @@ pub fn regenerate(
     //     Vec2::new(camera_position.x - 100.0, camera_position.y - 100.0),
     //     Vec2::new(camera_position.x + 100.0, camera_position.y + 100.0),
     // );
-
     layer_manager.clear_layer_clients();
     layer_manager.add_layer_client(LayerClient::new(
-        camera_position,
+        camera_position/10.,
         vec![Dependency::new::<VoronoiLayer>(Vec2::new(10.0, 10.0))],
         UsageStrategy::Fast,
     ));
