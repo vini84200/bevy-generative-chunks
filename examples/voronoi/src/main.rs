@@ -132,6 +132,7 @@ pub fn setup_layers_manager(world: &mut World) {
         .add_layer(PointsLayer)
         .add_layer(VoronoiLayer)
         .build();
+    manager.print_dot();
     world.insert_non_send_resource(manager);
 }
 
@@ -142,6 +143,7 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.spawn((Camera2d, PanCam::default()));
     let rect = meshes.add(Rectangle::new(10.0, 10.0));
     commands.insert_resource(RectShape(rect));
+    
 }
 
 pub fn regenerate(

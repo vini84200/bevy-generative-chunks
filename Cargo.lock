@@ -317,6 +317,7 @@ dependencies = [
  "bimap",
  "daggy",
  "downcast-rs 2.0.1",
+ "lazy_static",
  "log",
  "rand",
  "serde",

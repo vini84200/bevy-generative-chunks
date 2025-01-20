@@ -20,6 +20,7 @@ bimap = "0.6.3"
 downcast-rs = "2.0.1"
 serde = { version = "1.0.217", features = ["derive"] }
 rand = { version = "0.8.5" , features = ["small_rng"]}
+lazy_static = { version = "1.5.0", features = [] }
 
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.
