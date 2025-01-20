@@ -26,7 +26,7 @@ struct PointChunk {
     strength: f32
 }
 
-const POINT_CHUNK_SIZE: Vec2 = Vec2::new(15., 15.);
+const POINT_CHUNK_SIZE: Vec2 = Vec2::new(25., 25.);
 struct PointsLayer;
 impl Chunk for PointChunk {
     fn get_size() -> Vec2 {
@@ -41,7 +41,7 @@ impl Layer for PointsLayer {
         // Get thread random with the chunk_idx as seed
         let seed = chunk_idx.x + chunk_idx.y * 512;
         let mut random = rand::prelude::SmallRng::seed_from_u64(seed as u64);
-        info!("Generating points chunk with idx: {:?}", chunk_idx);
+        // info!("Generating points chunk with idx: {:?}", chunk_idx);
 
         PointChunk {
             point: Vec2::new(
@@ -53,7 +53,7 @@ impl Layer for PointsLayer {
                 random.gen_range(0..255),
                 random.gen_range(0..255),
             ),
-            strength: random.gen_range(0.2..1.0),
+            strength: random.gen_range(0.8..1.4),
         }
     }
 }
@@ -91,15 +91,15 @@ impl Layer for VoronoiLayer {
         let closest_point = points
             .iter()
             .min_by(|a, b| {
-                let a_dist = euclidean_distance(a.point, chunk_idx.center(Self::Chunk::get_size())) / a.strength;
-                let b_dist = euclidean_distance(b.point, chunk_idx.center(Self::Chunk::get_size())) / b.strength;
+                let a_dist = manhattan_distance(a.point, chunk_idx.center(Self::Chunk::get_size())) / a.strength;
+                let b_dist = manhattan_distance(b.point, chunk_idx.center(Self::Chunk::get_size())) / b.strength;
                 a_dist.partial_cmp(&b_dist).unwrap()
             })
             .unwrap();
-        info!(
-            "Generating voronoi chunk with closest point: {:?}",
-            closest_point
-        );
+        // info!(
+        //     "Generating voronoi chunk with closest point: {:?}",
+        //     closest_point
+        // );
         VoronoiChunk {
             color: closest_point.color,
         }
@@ -110,10 +110,6 @@ impl Layer for VoronoiLayer {
     }
 }
 
-// #[derive(Resource)]
-// struct LayerManagerResource {
-//     manager: LayersManager,
-// }
 
 fn main() {
     App::new()
@@ -161,18 +157,18 @@ pub fn regenerate(
     layer_manager.clear_layer_clients();
     layer_manager.add_layer_client(LayerClient::new(
         camera_position/10.,
-        vec![Dependency::new::<VoronoiLayer>(Vec2::new(10.0, 10.0))],
+        vec![Dependency::new::<VoronoiLayer>(Vec2::new(40.0, 40.0))],
         UsageStrategy::Fast,
     ));
 
     layer_manager.regenerate();
 }
 
-#[derive(Component)]
-struct VornoiChunkVisual(
-    // The index of the chunk
-    ChunkIdx,
-);
+// #[derive(Component)]
+// struct VornoiChunkVisual(
+//     // The index of the chunk
+//     ChunkIdx,
+// );
 
 #[derive(Resource)]
 struct ChunkIndex {
@@ -205,16 +201,16 @@ fn draw(
                 )),
                 Mesh2d(rect_shape.0.clone()),
                 MeshMaterial2d(materials.add(color)),
-                VornoiChunkVisual(idx),
+                // VornoiChunkVisual(idx),
             ));
             chunk_index.index.insert(idx, entity.id());
-            println!("Drawing chunk at {:?}", idx);
+            // println!("Drawing chunk at {:?}", idx);
         }
     }
     for idx in layer_manager.get_deleted_chunks::<VoronoiLayer>() {
         if let Some(entity) = chunk_index.index.remove(idx) {
             commands.entity(entity).despawn();
-            println!("Despawning chunk at {:?}", idx);
+            // println!("Despawning chunk at {:?}", idx);
         } 
     }
 }
