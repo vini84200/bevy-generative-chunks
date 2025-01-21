@@ -1,3 +1,4 @@
+use rayon::iter::ParallelIterator;
 use crate::generative_chunks::bounds::{Bounds, ChunkIdx, Point};
 use crate::generative_chunks::layer_id::LayerId;
 use crate::generative_chunks::layer_manager::LayerLookupChunk;
@@ -7,6 +8,9 @@ use bevy::math::Vec2;
 use downcast_rs::{impl_downcast, Downcast};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Deref;
+use std::sync::{Arc, Mutex};
+use rayon::iter::IntoParallelRefMutIterator;
 
 type ChunkGenerator = Box<dyn Fn(&LayerLookupChunk, &ChunkIdx) -> Box<dyn Chunk> + Send + Sync>;
 
@@ -58,12 +62,12 @@ impl LayerConfig {
     }
 
     pub(crate) fn generate(&mut self, lookup: &LayerLookupChunk) -> LayerGenerationResult {
-        let mut to_delete = Vec::new();
-        for (chunk_idx, chunk) in self.storage.iter_mut() {
+        let to_delete = Arc::new(Mutex::new(Vec::new()));
+        self.storage.par_iter_mut().for_each(|(chunk_idx, chunk)| {
             // Check if the chunk usage is zero
             match chunk.usage_counter.best_usage() {
                 None => {
-                    to_delete.push(*chunk_idx);
+                    to_delete.lock().unwrap().push(*chunk_idx);
                 }
                 Some(Fast) => {
                     if chunk.chunk.is_none() {
@@ -75,10 +79,12 @@ impl LayerConfig {
                     // Do nothing
                 }
             }
-        }
-        for chunk_idx in to_delete.iter() {
+        });
+        for chunk_idx in to_delete.lock().unwrap().iter() {
             self.storage.remove(chunk_idx);
         }
+        let to_delete = Arc::try_unwrap(to_delete).unwrap();
+        let to_delete = to_delete.into_inner().unwrap();
 
         LayerGenerationResult { deleted: to_delete }
     }
