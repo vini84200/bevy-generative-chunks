@@ -11,13 +11,6 @@ use bevy_generative_chunks::generative_chunks::layer_manager::{LayerLookupChunk,
 use rand::{Rng, SeedableRng};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
-/// For this test we will have a layer that depends on another layer
-/// The points layer will have a chunk size of 5x5 and will generate a single random point
-/// and a random color for that point
-/// The voronoi layer will have a chunk size of 1x1 and will generate the color of the closest point
-/// in the points layer, the dependency will have a padding of 10x10 to ensure that the voronoi layer
-/// has enough information to generate the color of the closest point
-
 #[derive(Debug, Clone)]
 struct PointChunk {
     /// The point is in real coordinates
@@ -111,6 +104,9 @@ impl Layer for VoronoiLayer {
 }
 
 
+#[derive(Resource, Deref, DerefMut )]
+struct LayerManagerRes(LayersManager);
+
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins,PanCamPlugin))
@@ -123,13 +119,13 @@ fn main() {
         .run();
 }
 
-pub fn setup_layers_manager(world: &mut World) {
+pub fn setup_layers_manager(mut commands: Commands) {
     let manager = LayersManagerBuilder::new()
         .add_layer(PointsLayer)
         .add_layer(VoronoiLayer)
         .build();
     manager.print_dot();
-    world.insert_non_send_resource(manager);
+    commands.insert_resource(LayerManagerRes(manager));
 }
 
 #[derive(Resource)]
@@ -142,9 +138,10 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 }
 
-pub fn regenerate(
+
+fn regenerate(
     // mut commands: Commands,
-    mut layer_manager: NonSendMut<LayersManager>,
+    mut layer_manager: ResMut<LayerManagerRes>,
     query: Query<&Transform, With<Camera2d>>,
 ) {
     let camera_transform = query.single();
@@ -177,7 +174,7 @@ struct ChunkIndex {
 
 fn draw(
     mut commands: Commands,
-    layer_manager: NonSend<LayersManager>,
+    layer_manager: Res<LayerManagerRes>,
     rect_shape: Res<RectShape>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut chunk_index: ResMut<ChunkIndex>,

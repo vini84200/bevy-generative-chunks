@@ -8,7 +8,7 @@ use downcast_rs::{impl_downcast, Downcast};
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-type ChunkGenerator = Box<dyn Fn(&LayerLookupChunk, &ChunkIdx) -> Box<dyn Chunk>>;
+type ChunkGenerator = Box<dyn Fn(&LayerLookupChunk, &ChunkIdx) -> Box<dyn Chunk> + Send + Sync>;
 
 // #[derive(Debug)]
 pub struct LayerConfig {
@@ -188,7 +188,7 @@ impl Dependency {
 
 impl<T> IntoLayerConfig for T
 where
-    T: Layer + 'static,
+    T: Layer + 'static + Send + Sync,
     T::Chunk: Chunk,
 {
     fn into_layer_config(self) -> LayerConfig {

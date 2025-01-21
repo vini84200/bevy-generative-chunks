@@ -6,8 +6,8 @@ use bevy::math::Vec2;
 use daggy::petgraph::dot::{Config, Dot};
 use daggy::petgraph::visit::Topo;
 use daggy::Dag;
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 pub struct LayersManagerBuilder {
     layers: Vec<LayerConfig>,
@@ -15,7 +15,7 @@ pub struct LayersManagerBuilder {
 
 // #[derive(Debug)]
 pub struct LayersManager {
-    layers: HashMap<LayerId, RefCell<LayerConfig>>,
+    layers: HashMap<LayerId, Arc<Mutex<LayerConfig>>>,
     dag: Dag<LayerId, ()>,
     layer_client: Vec<LayerClient>,
     /// List of chunks to delete
@@ -28,7 +28,7 @@ impl LayersManager {
         L::Chunk: Clone,
     {
         let layer_id = LayerId::from_type::<L>();
-        let layer = self.layers.get(&layer_id).unwrap().borrow();
+        let layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
         let Vec2 {
             x: width,
             y: height,
@@ -44,7 +44,7 @@ impl LayersManager {
         L::Chunk: Clone,
     {
         let layer_id = LayerId::from_type::<L>();
-        let layer = self.layers.get(&layer_id).unwrap().borrow();
+        let layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
         let mut chunks = Vec::new();
         for chunk_idx in bounds.chunks(L::Chunk::get_size()) {
             let chunk = layer.get_storage().get(&chunk_idx);
@@ -63,7 +63,7 @@ impl LayersManager {
         L::Chunk: Clone,
     {
         let layer_id = LayerId::from_type::<L>();
-        let layer = self.layers.get(&layer_id).unwrap().borrow();
+        let layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
         let mut chunks = Vec::new();
         for (chunk_idx, chunk_wrapper) in layer.get_storage().iter() {
             let data = chunk_wrapper.get_chunk::<L::Chunk>();
@@ -81,14 +81,14 @@ impl LayersManager {
     pub fn clear_layer_clients(&mut self) {
         self.layer_client.clear();
     }
-    pub fn get_deleted_chunks<L:Layer+'static>(&self) -> &Vec<ChunkIdx> {
+    pub fn get_deleted_chunks<L: Layer + 'static>(&self) -> &Vec<ChunkIdx> {
         let layer_id = LayerId::from_type::<L>();
         self.delete_list.get(&layer_id).unwrap()
     }
 }
 
 pub struct LayerLookupChunk<'a> {
-    layers: &'a HashMap<LayerId, RefCell<LayerConfig>>,
+    layers: &'a HashMap<LayerId, Arc<Mutex<LayerConfig>>>,
 }
 
 impl LayerLookupChunk<'_> {
@@ -100,7 +100,7 @@ impl LayerLookupChunk<'_> {
     where
         L::Chunk: Clone,
     {
-        let layer = self.layers.get(&layer_id).unwrap().borrow();
+        let layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
         let chunk = layer.get_storage().get(&chunk_idx)?;
         let data = chunk.get_chunk::<L::Chunk>();
         data.cloned()
@@ -133,7 +133,6 @@ impl LayerLookupChunk<'_> {
         }
         chunks
     }
-    
 }
 
 impl LayersManager {
@@ -152,7 +151,9 @@ impl LayersManager {
 
     fn clear_usage(&mut self) {
         for layer in self.layers.values() {
-            layer.borrow_mut().clear_usage();
+            if let Ok(mut layer) = layer.lock() {
+                layer.clear_usage();
+            }
         }
     }
 
@@ -180,10 +181,12 @@ impl LayersManager {
         while let Some(node) = topo.next(&self.dag) {
             // Check if the layer has any requirements to pass to its dependencies
             let layer_id = self.dag[node];
-            let layer = self.layers.get(&layer_id).unwrap().borrow();
-            let requirements = layer.requires();
+            let requirements = {
+                let layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
+                layer.requires() 
+            };
             for (dependency_id, bounds) in requirements {
-                let mut dependency = self.layers.get(&dependency_id).unwrap().borrow_mut();
+                let mut dependency = self.layers.get(&dependency_id).unwrap().lock().unwrap();
                 dependency.ensure_generated(&bounds);
             }
             stack.push(node);
@@ -192,11 +195,11 @@ impl LayersManager {
         // Now we can generate the chunks, by transversing the DAG in topological order in reverse
         stack.iter().rev().for_each(|node| {
             let layer_id = self.dag[*node];
-            let mut layer = self.layers.get(&layer_id).unwrap().borrow_mut();
-            // Generate the chunks
             let layer_lookup = LayerLookupChunk {
                 layers: &self.layers,
             };
+            let mut layer = self.layers.get(&layer_id).unwrap().lock().unwrap();
+            // Generate the chunks
             let result = layer.generate(&layer_lookup);
             // Add the chunks to the delete list
             self.delete_list
@@ -216,7 +219,8 @@ impl LayersManager {
                     .layers
                     .get_mut(&dep.get_layer_id())
                     .unwrap()
-                    .borrow_mut();
+                    .lock()
+                    .unwrap();
                 layer.ensure_generated(
                     &Bounds::from_point(layer_client.get_center()).add_padding(dep.get_padding()),
                 );
@@ -242,7 +246,7 @@ impl LayersManagerBuilder {
     }
 
     pub fn build(self) -> LayersManager {
-        let mut layers: HashMap<LayerId, RefCell<LayerConfig>> = HashMap::new();
+        let mut layers: HashMap<LayerId, Arc<Mutex<LayerConfig>>> = HashMap::new();
         let mut dag = Dag::new();
         let mut dag_index = HashMap::new();
         let mut delete_list = HashMap::new();
@@ -262,7 +266,7 @@ impl LayersManagerBuilder {
             .expect("Adding edges to DAG created a cycle");
         }
         for layer in self.layers {
-            layers.insert(layer.get_layer_id(), RefCell::new(layer));
+            layers.insert(layer.get_layer_id(), Arc::new(Mutex::new(layer)));
         }
 
         LayersManager {
